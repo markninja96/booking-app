@@ -1,0 +1,26 @@
+{
+  "name": "@booking-app/booking-backend-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "implicitDependencies": [
+      "@booking-app/booking-backend"
+    ],
+    "targets": {
+      "e2e": {
+        "executor": "@nx/jest:jest",
+        "outputs": [
+          "{projectRoot}/test-output/jest/coverage"
+        ],
+        "options": {
+          "jestConfig": "apps/booking-backend-e2e/jest.config.cts",
+          "passWithNoTests": true
+        },
+        "dependsOn": [
+          "@booking-app/booking-backend:build",
+          "@booking-app/booking-backend:serve"
+        ]
+      }
+    }
+  }
+}
