@@ -1,0 +1,29 @@
+reviews:
+  auto_review:
+    enabled: true
+  summary:
+    enabled: true
+  suggestions:
+    enabled: true
+
+files:
+  ignore:
+    - '**/node_modules/**'
+    - '**/dist/**'
+    - '**/out-tsc/**'
+    - '**/test-output/**'
+    - '**/coverage/**'
+    - '**/pnpm-lock.yaml'
+    - '**/.nx/**'
+    - '**/.turbo/**'
+
+language_specific:
+  typescript:
+    strict_types: true
+
+style:
+  enforce_single_quotes: true
+  prefer_semicolons: true
+  import_order:
+    - external
+    - local

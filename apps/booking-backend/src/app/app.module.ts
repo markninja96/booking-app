@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthController } from '../health/health.controller';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['apps/booking-backend/.env', '.env'],
+    }),
+  ],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}
