@@ -17,6 +17,8 @@ pnpm install
 
 Copy `.env.example` to `.env` and adjust if needed.
 
+Do not commit real secrets. Provide production values via CI/host env or Docker secrets.
+
 Required variables:
 
 - `DATABASE_URL`

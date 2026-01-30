@@ -4,7 +4,7 @@
 
 Repository context
 
-- Workspace root: /Users/marknjihia/Desktop/dojo/booking-app
+- Workspace root: <repo-root>
 - Monorepo toolchain: Nx 22.x + NestJS 11 + Jest + ESLint flat config
 - Apps: `apps/booking-backend` (API) and `apps/booking-backend-e2e` (e2e tests)
 
@@ -14,22 +14,22 @@ Cursor/Copilot rules
 
 Commands (run from repo root)
 
-- Install deps: `npm install`
-- List projects/targets: `npx nx show projects`
-- Build backend (prod): `npx nx build booking-backend`
-- Build backend (dev): `npx nx run booking-backend:build:development`
-- Serve backend (dev): `npx nx serve booking-backend`
-- Serve backend (prod): `npx nx run booking-backend:serve:production`
-- Run unit tests (all): `npx nx test booking-backend`
-- Run e2e tests (all): `npx nx run booking-backend-e2e:e2e`
-- Lint backend: `npx nx lint booking-backend`
-- Lint all projects: `npx nx lint`
+- Install deps: `pnpm install`
+- List projects/targets: `pnpm nx show projects`
+- Build backend (prod): `pnpm nx build booking-backend`
+- Build backend (dev): `pnpm nx run booking-backend:build:development`
+- Serve backend (dev): `pnpm nx serve booking-backend`
+- Serve backend (prod): `pnpm nx run booking-backend:serve:production`
+- Run unit tests (all): `pnpm nx test booking-backend`
+- Run e2e tests (all): `pnpm nx run booking-backend-e2e:e2e`
+- Lint backend: `pnpm nx lint booking-backend`
+- Lint all projects: `pnpm nx lint`
 
 Run a single test
 
-- Unit: `npx nx test booking-backend -- --testPathPattern app.controller.spec.ts`
-- Unit by name: `npx nx test booking-backend -- --testNamePattern "getData"`
-- E2E: `npx nx run booking-backend-e2e:e2e -- --testPathPattern booking-backend.e2e-spec.ts`
+- Unit: `pnpm nx test booking-backend -- --testPathPattern app.controller.spec.ts`
+- Unit by name: `pnpm nx test booking-backend -- --testNamePattern "getData"`
+- E2E: `pnpm nx run booking-backend-e2e:e2e -- --testPathPattern booking-backend.e2e-spec.ts`
 - Tip: anything after `--` passes directly to Jest.
 
 Test tooling notes
@@ -44,8 +44,8 @@ Formatting
 - Prettier config: `.prettierrc` (single quotes)
 - Indentation: 2 spaces (per `.editorconfig`)
 - Trailing whitespace: trimmed; ensure final newline
-- Format check: `npx prettier . --check`
-- Format fix: `npx prettier . --write`
+- Format check: `pnpm prettier . --check`
+- Format fix: `pnpm prettier . --write`
 
 Linting
 
@@ -140,11 +140,11 @@ Local runtime notes
 
 - Backend listens on `process.env.PORT` or `3000`
 - Global API prefix is `api` (see `apps/booking-backend/src/main.ts`)
-- Prefer `npx nx serve booking-backend` over running compiled JS directly
+- Prefer `pnpm nx serve booking-backend` over running compiled JS directly
 
 General guidance for agents
 
-- Prefer Nx targets (`npx nx <target> <project>`) to keep caching consistent
+- Prefer Nx targets (`pnpm nx <target> <project>`) to keep caching consistent
 - Avoid editing generated files in `dist` or `out-tsc`
 - Keep changes scoped to the backend unless requested otherwise
 - If you introduce new scripts or tools, document them here

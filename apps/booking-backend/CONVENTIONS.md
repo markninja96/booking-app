@@ -122,4 +122,4 @@ Preferred for this repo:
 - Unit tests for BookingsService core logic.
 - One e2e/integration test:
   - create booking -> fetch booking from REST
-- Keep tests deterministic; no real time sleeps (prefer short delays in test env if needed).
+- Keep tests deterministic; no real-time sleeps (prefer short delays in test env if needed).
