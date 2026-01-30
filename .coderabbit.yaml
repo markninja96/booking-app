@@ -1,0 +1,13 @@
+reviews:
+  enabled: true
+  auto_review:
+    enabled: true
+  path_filters:
+    - '!**/node_modules/**'
+    - '!**/dist/**'
+    - '!**/out-tsc/**'
+    - '!**/test-output/**'
+    - '!**/coverage/**'
+    - '!**/pnpm-lock.yaml'
+    - '!**/.nx/**'
+    - '!**/.turbo/**'
