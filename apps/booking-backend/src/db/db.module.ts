@@ -5,6 +5,8 @@ import { createDrizzle, DB_POOL, DRIZZLE_DB } from './drizzle';
 import { DbService } from './db.service';
 
 @Module({
+  imports: [],
+  controllers: [],
   providers: [
     DbService,
     {

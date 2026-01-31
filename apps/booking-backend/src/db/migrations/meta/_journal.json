@@ -8,6 +8,13 @@
       "when": 1769774307870,
       "tag": "0000_sturdy_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769864756546,
+      "tag": "0001_curly_molten_man",
+      "breakpoints": true
     }
   ]
 }

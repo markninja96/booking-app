@@ -35,8 +35,18 @@ export const bookings = pgTable(
   'bookings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    providerId: uuid('provider_id').notNull(),
-    customerId: uuid('customer_id').notNull(),
+    providerId: uuid('provider_id')
+      .notNull()
+      .references(() => providers.id, {
+        onDelete: 'restrict',
+        onUpdate: 'cascade',
+      }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, {
+        onDelete: 'restrict',
+        onUpdate: 'cascade',
+      }),
     startTime: timestamp('start_time', { withTimezone: true }).notNull(),
     endTime: timestamp('end_time', { withTimezone: true }).notNull(),
     status: text('status').notNull(),

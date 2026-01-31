@@ -113,15 +113,15 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
-    "drizzle-orm": "^0.38.3",
-    "pg": "^8.13.1",
+    "drizzle-orm": "0.45.1",
+    "pg": "8.17.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
-    "@types/pg": "^8.11.9",
-    "drizzle-kit": "^0.27.1"
+    "@types/pg": "8.16.0",
+    "drizzle-kit": "0.31.8"
   }
 }
