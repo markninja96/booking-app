@@ -1,0 +1,4 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend
