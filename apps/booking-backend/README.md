@@ -41,6 +41,33 @@ pnpm nx serve booking-backend
 docker compose -f apps/booking-backend/docker-compose.yml up -d postgres redis
 ```
 
+## Database
+
+Generate migrations from the schema:
+
+```bash
+pnpm nx run booking-backend:db-generate
+```
+
+Apply migrations:
+
+```bash
+pnpm nx run booking-backend:db-migrate
+```
+
+Open Drizzle Studio:
+
+```bash
+pnpm nx run booking-backend:db-studio
+```
+
+Inspect tables:
+
+```bash
+docker compose -f apps/booking-backend/docker-compose.yml exec postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
 ## Build
 
 ```bash
