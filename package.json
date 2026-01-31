@@ -4,7 +4,7 @@
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "private": true,
   "dependencies": {

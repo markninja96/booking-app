@@ -13,7 +13,7 @@ import { DbService } from './db.service';
       provide: DB_POOL,
       useFactory: (configService: ConfigService) =>
         new Pool({
-          connectionString: configService.get<string>('DATABASE_URL'),
+          connectionString: configService.getOrThrow<string>('DATABASE_URL'),
         }),
       inject: [ConfigService],
     },
