@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
-  "scripts": {},
+  "scripts": {
+    "prepare": "husky"
+  },
   "private": true,
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -36,6 +38,7 @@
     "@types/node": "20.19.9",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "husky": "^9.1.6",
     "jest": "^30.0.2",
     "jest-environment-node": "^30.0.2",
     "jest-util": "^30.0.2",
@@ -50,5 +53,11 @@
   },
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "pnpm": {
+    "overrides": {
+      "esbuild@<=0.24.2": ">=0.25.0",
+      "lodash@>=4.0.0 <=4.17.22": ">=4.17.23"
+    }
+  }
 }
