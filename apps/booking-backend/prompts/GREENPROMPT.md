@@ -16,186 +16,180 @@ Scope control
 - Implement ONLY features listed in `apps/booking-backend/STAGES.md`.
 - No extra entities/endpoints/nice-to-haves unless explicitly requested.
 
-Repo quality gates (must pass continuously)
+Stage plan (agent must follow)
+
+Gates (after every stage)
+
+Run and pass:
 
 - `pnpm nx lint booking-backend`
 - `pnpm nx build booking-backend`
 - `pnpm nx test booking-backend`
-  If a gate fails, fix immediately before moving on.
 
-Stage 0 — Project scaffolding & conventions (STOP when done)
-Tasks
+If any fails, fix before proceeding.
+STOP after finishing the current stage and output the required diff discipline summary.
 
-- Create NestJS project with strict TS.
-- Add ESLint + Prettier configs.
-- Add `.env.example`.
-- Add `README.md` skeleton with run commands placeholders.
-- Add `docker-compose.yml` placeholder.
+Diff discipline (after every stage)
 
-Gate
-✅ `pnpm nx build booking-backend`
-✅ `pnpm nx lint booking-backend`
-✅ `pnpm nx test booking-backend` (can be default test, must pass)
+Output:
 
-Output: list created files and commands to run.
+- Summary (3–7 bullets)
+- Pseudo-commit message (conventional commits)
+- Files changed (added/modified/deleted) + 1-line per file
+- Commands executed + results
 
-Stage 1 — Infrastructure: Docker Compose + Config (STOP when done)
-Tasks
+Stage 0: Scaffold (STOP when done)
 
-- Implement `docker-compose.yml` for postgres, redis, and optional app.
-- Add Nest ConfigModule reading env vars.
-- Add health endpoint: GET `/health` returns ok + DB connectivity check if easy.
+- Create Nest project, strict TS
+- eslint/prettier
+- README skeleton
+- .env.example
+- placeholder docker-compose.yml
 
-Gate
-✅ `docker compose up -d postgres redis`
-✅ `pnpm nx build booking-backend && pnpm nx lint booking-backend && pnpm nx test booking-backend`
+Stage 1: Infra (STOP when done)
 
-Output: exact env vars needed + how to start deps + how to run app.
+- docker-compose: postgres + redis
+- ConfigModule env wiring
+- GET /health
 
-Stage 2 — Database: Drizzle schema + migrations (STOP when done)
-Data model
+Stage 2: DB (UPDATED: unified users + profiles) (STOP when done)
 
-- bookings(id, provider_id, customer_id, start_time, end_time, status, idempotency_key, created_at, updated_at)
-- providers(id, name, created_at)
-- customers(id, name, email unique, created_at)
+Note: Due to Stage 3 changes, Stage 2 must be re-executed before starting Stage 3.
 
-Indexes
+- Drizzle schema + migrations
+- DB module
+- migration command
+- DB smoke test
+- Schema must include:
+  - users (id, name, email unique, password_hash nullable, created_at, updated_at)
+  - provider_profiles (user_id pk/fk->users.id, business_name, created_at, updated_at)
+  - customer_profiles (user_id pk/fk->users.id, created_at, updated_at)
+  - bookings with:
+    - provider_user_id FK -> provider_profiles.user_id
+    - customer_user_id FK -> customer_profiles.user_id
+    - start_time, end_time, status, idempotency_key, created_at, updated_at
+- Indexes must include:
+  - unique(provider_user_id, idempotency_key) where idempotency_key is not null
+  - index(provider_user_id, start_time)
+  - index(customer_user_id, start_time)
 
-- unique(provider_id, idempotency_key) where idempotency_key is not null
-- index(provider_id, start_time)
-- index(customer_id, start_time)
+Stage 3: Auth (Passport JWT) — SPLIT (3A/3B/3C)
 
-Tasks
+Stage 3A: Identity + Email/Password + JWT + /me (STOP when done)
 
-- Add Drizzle config, schema, migration generation.
-- Add DB module and simple repository scaffolding.
+- Implement email/password auth:
+  - POST /auth/register → creates user, returns { accessToken }
+  - POST /auth/login → returns { accessToken }
+- JwtStrategy + JwtAuthGuard (Bearer token)
+- Add protected diagnostic endpoint:
+  - GET /me returns { userId, roles, activeRole, actorUserId, subjectUserId }
+- (3A must include tests)
+  - /me returns 401 without token
+  - /me returns 200 with valid token and correct userId
+  - register/login roundtrip works
 
-Gate
-✅ `pnpm nx <db:migrate target>` (or equivalent) succeeds against compose Postgres
-✅ `pnpm nx test booking-backend` includes at least one DB connectivity or migration smoke test
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend`
+Stage 3B: Roles + Active Role Switching + Admin Bootstrap (STOP when done)
 
-Output: migration commands + how to inspect tables.
+- Add role model:
+  - user_roles(user_id, role) with unique(user_id, role)
+  - roles: admin | provider | customer
+- Update registration to assign role + create matching profile row:
+  - POST /auth/register accepts { name, email, password, role: 'customer'|'provider', businessName?: string }
+  - If role=provider → require businessName and ensure provider_profile exists
+  - If role=customer → ensure customer_profile exists
+- JWT must include roles[] and initialize activeRole to the registered role
+- Add active role switching:
+  - POST /auth/active-role (guarded) body { activeRole: 'customer'|'provider' }
+  - validates caller has role + matching profile exists
+  - returns re-issued { accessToken } with updated activeRole
+- Deterministic admin bootstrap (choose one; document):
+  - BOOTSTRAP_ADMIN_EMAIL ensures admin role for an existing user (no implicit user creation), OR
+  - seed/migration-based bootstrap
+- Add a tiny admin-only probe endpoint for wiring:
+  - GET /admin/ping guarded by @Roles('admin')
+- (3B must include tests)
+  - provider registration requires businessName (400 otherwise)
+  - registration creates correct profile row
+  - active-role switch rejects role not owned
+  - admin ping denies non-admin and allows admin
 
-Stage 3 — Auth: Passport JWT + Roles (STOP when done)
-JWT payload
+Stage 3C: Admin Role Mgmt + Impersonation + Google OAuth (STOP when done)
 
-- sub (userId)
-- role: customer | provider
-- customerId?
-- providerId?
+- Add OAuth identity linking:
+  - auth_identities(user_id, provider, provider_user_id) unique(provider, provider_user_id)
+- Google OAuth via Passport:
+  - GET /auth/google
+  - GET /auth/google/callback
+  - If identity exists → login
+  - Else → create user + identity link + assign default role customer + ensure customer_profile exists
+- Admin role management (admin-only):
+  - POST /admin/users/:id/roles/grant { role, businessName? }
+    - if granting provider and profile missing → require businessName and create provider_profile
+    - if granting customer and profile missing → create customer_profile
+  - POST /admin/users/:id/roles/revoke { role }
+- Impersonation (admin-only):
+  - POST /admin/impersonation/start { subjectUserId } → returns { accessToken } with actorUserId + subjectUserId
+  - POST /admin/impersonation/stop → returns non-impersonated token
+- Invariant: normal endpoints evaluate roles/identity as subject; admin-only endpoints authorize via actor
+- /me must reflect impersonation context accurately (actorUserId + subjectUserId)
+- (3C must include tests)
+  - non-admin cannot grant roles
+  - granting provider role requires/creates provider_profile (businessName required if creating)
+  - impersonation start requires admin
+  - while impersonating: /me shows actor+subject
+  - while impersonating: no privilege leakage on non-admin endpoints (subject permissions apply)
 
-Tasks
+Provide local dev tokens (applies across Stage 3)
 
-- Implement JwtStrategy (Bearer token from Authorization header).
-- Implement JwtAuthGuard.
-- Implement RolesGuard + @Roles() decorator.
-- Add dev-only endpoint to mint tokens (ONLY in development) OR provide sample tokens in README (choose one; document clearly).
+- Choose ONE approach (document clearly):
+  - mint endpoint behind env flag, OR
+  - documented sample tokens + steps in README
 
-Gate
-✅ Unit tests for guards/strategy or at least one e2e test hitting a protected route
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
+Stage 4: Zod validation (STOP when done)
 
-Output: how to authenticate locally.
+- ZodValidationPipe/helper
+- Zod schemas for bookings endpoints
+- tests for 400 invalid payloads
 
-Stage 4 — Validation: Zod pipeline + schemas (STOP when done)
-Tasks
+Stage 5: REST Bookings (UPDATED: no self-booking) (STOP when done)
 
-- Implement ZodValidationPipe (or equivalent) and use it consistently.
-- Create Zod schemas for:
-  - POST /bookings body
-  - GET /bookings query
-  - GET /bookings/:id params
-- Ensure errors are clean (400 with helpful message).
-- Swagger: docs may use DTOs; runtime validation must remain Zod.
+- POST /bookings (idempotency + auth rules)
+- customer creates booking as themselves (customer_user_id derived from JWT subject)
+- provider_user_id must exist in provider_profiles
+- disallow self-booking: reject if provider_user_id === customer_user_id (400)
+- GET /bookings/:id
+- GET /bookings list (cursor pagination)
+- REST rate limiting via Nest Throttler
+- e2e test create->read
+- Add test: self-booking rejected (400)
 
-Gate
-✅ Tests covering invalid payloads returning 400
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
+Stage 6: BullMQ reminders (STOP when done)
 
-Output: validation approach explanation in README.
+- reminders queue
+- delayed job at start_time - 10m, deterministic jobId
+- worker logs + emits placeholder hook
+- tests for deterministic jobId
 
-Stage 5 — Core REST: Bookings CRUD (minimal) (STOP when done)
-Endpoints
+Stage 7: WebSockets (STOP when done)
 
-- POST /bookings → 201 { bookingId }
-- GET /bookings/:id → 200 { booking }
-- GET /bookings?type=upcoming|past&cursor&limit → 200 { items, nextCursor }
+- Gateway with JWT auth at connect
+- rooms: customer:{id}, provider:{id}
+- emit booking.created, booking.reminder.due
+- redis adapter/pubsub for broadcast
+- ws smoke test (script acceptable)
 
-Rules
+Stage 8: gRPC (STOP when done)
 
-- Customer can create only for own customerId.
-- Provider can create only for own providerId.
-- Idempotency: if idempotencyKey provided, dedupe per provider.
-  Choose: return existing booking id OR 409 conflict (pick one and document).
-- Cursor pagination: order by (start_time, id) and encode cursor.
-- Rate limiting: @nestjs/throttler 60 rpm per user/ip for REST routes.
+- bookings.proto Create/Get/List
+- grpc controller calls service layer
+- internal auth placeholder header
+- grpc smoke test
 
-Gate
-✅ Unit tests for service logic
-✅ At least one e2e test: create booking → read booking
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
+Stage 9: Final polish (STOP when done)
 
-Output: endpoint examples (curl) in README.
-
-Stage 6 — BullMQ reminders (STOP when done)
-Tasks
-
-- Add BullMQ queue reminders.
-- On booking create: compute runAt = start_time - 10m
-- Enqueue delayed job with deterministic jobId = reminder:{bookingId}
-- Worker: logs booking.reminder.due (no external integrations).
-
-Gate
-✅ Test: enqueuing uses deterministic jobId
-✅ Optional integration test: fast-forward by scheduling a short delay job in test env
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
-
-Output: how to run worker (same process or separate) and how to observe jobs.
-
-Stage 7 — WebSockets notifications + Redis adapter (STOP when done)
-Tasks
-
-- WS gateway: JWT auth at connection (reuse JWT verification).
-- Identify client as customer/provider and store mapping.
-- Emit events:
-  - booking.created after commit
-  - booking.reminder.due from worker
-- Add Redis adapter/pubsub so multiple instances broadcast.
-
-Gate
-✅ Basic WS test or manual script in scripts/ to connect and receive events
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
-
-Output: example client snippet / steps in README.
-
-Stage 8 — gRPC entrypoint (STOP when done)
-Tasks
-
-- Define bookings.proto with CreateBooking, GetBooking, ListBookings.
-- Implement Nest gRPC controller mapping to the same service layer.
-- Add simple internal auth (header x-internal-token) as placeholder; document “replace with mTLS”.
-
-Gate
-✅ Minimal test: gRPC server starts and handles at least GetBooking in test
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
-
-Output: how to call gRPC locally.
-
-Stage 9 — Final polish (STOP when done)
-Tasks
-
-- Ensure README is complete and accurate.
-- Ensure compose brings up everything.
-- Ensure logs have requestId.
-- Remove dev-only token minting if added (or keep behind env flag clearly).
-
-Final Gate
-✅ `docker compose up -d`
-✅ `pnpm nx <db:migrate target>`
-✅ `pnpm nx lint booking-backend && pnpm nx build booking-backend && pnpm nx test booking-backend`
-
-Output: final “What I built” + commands + directory structure + key files.
+- finalize README with exact commands
+- requestId middleware and structured logging
+- verify compose + migrate + gates
 
 Agent operating rules
 

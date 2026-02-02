@@ -8,42 +8,69 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-export const providers = pgTable('providers', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-export const customers = pgTable(
-  'customers',
+export const users = pgTable(
+  'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     email: text('email').notNull(),
+    passwordHash: text('password_hash'),
     createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => ({
-    emailUnique: uniqueIndex('customers_email_unique').on(table.email),
+    emailUnique: uniqueIndex('users_email_unique').on(table.email),
   }),
 );
+
+export const providerProfiles = pgTable('provider_profiles', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, {
+      onDelete: 'restrict',
+      onUpdate: 'cascade',
+    }),
+  businessName: text('business_name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const customerProfiles = pgTable('customer_profiles', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, {
+      onDelete: 'restrict',
+      onUpdate: 'cascade',
+    }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const bookings = pgTable(
   'bookings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    providerId: uuid('provider_id')
+    providerUserId: uuid('provider_user_id')
       .notNull()
-      .references(() => providers.id, {
+      .references(() => providerProfiles.userId, {
         onDelete: 'restrict',
         onUpdate: 'cascade',
       }),
-    customerId: uuid('customer_id')
+    customerUserId: uuid('customer_user_id')
       .notNull()
-      .references(() => customers.id, {
+      .references(() => customerProfiles.userId, {
         onDelete: 'restrict',
         onUpdate: 'cascade',
       }),
@@ -59,18 +86,16 @@ export const bookings = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    providerIdStartTimeIdx: index('bookings_provider_id_start_time_idx').on(
-      table.providerId,
-      table.startTime,
-    ),
-    customerIdStartTimeIdx: index('bookings_customer_id_start_time_idx').on(
-      table.customerId,
-      table.startTime,
-    ),
-    providerIdIdempotencyKeyUnique: uniqueIndex(
-      'bookings_provider_id_idempotency_key_unique',
+    providerUserIdStartTimeIdx: index(
+      'bookings_provider_user_id_start_time_idx',
+    ).on(table.providerUserId, table.startTime),
+    customerUserIdStartTimeIdx: index(
+      'bookings_customer_user_id_start_time_idx',
+    ).on(table.customerUserId, table.startTime),
+    providerUserIdIdempotencyKeyUnique: uniqueIndex(
+      'bookings_provider_user_id_idempotency_key_unique',
     )
-      .on(table.providerId, table.idempotencyKey)
+      .on(table.providerUserId, table.idempotencyKey)
       .where(sql`${table.idempotencyKey} is not null`),
   }),
 );
