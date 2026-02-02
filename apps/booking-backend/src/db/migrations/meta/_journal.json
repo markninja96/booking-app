@@ -15,6 +15,13 @@
       "when": 1769864756546,
       "tag": "0001_curly_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769950000000,
+      "tag": "0002_unified_users_profiles",
+      "breakpoints": true
     }
   ]
 }
