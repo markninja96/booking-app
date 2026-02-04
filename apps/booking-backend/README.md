@@ -24,6 +24,7 @@ Required variables:
 - `DATABASE_URL`
 - `REDIS_URL`
 - `PORT`
+- `JWT_SECRET`
 
 Optional for docker-compose:
 
