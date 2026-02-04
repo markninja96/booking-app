@@ -70,7 +70,7 @@ const registerSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: passwordSchema,
+  password: z.string().min(1),
 });
 
 const devTokenSchema = z.object({
