@@ -10,9 +10,21 @@ const OUTPUT_PATH = resolve(
   'apps/booking-backend/src/auth/password-denylist.txt',
 );
 
-const response = await fetch(SOURCE_URL);
-if (!response.ok) {
-  throw new Error(`Failed to fetch denylist: ${response.status}`);
+let response;
+try {
+  const signal = AbortSignal.timeout(10000);
+  response = await fetch(SOURCE_URL, { signal });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch denylist: ${response.status} (${SOURCE_URL})`,
+    );
+  }
+} catch (error) {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    throw new Error(`Denylist fetch timed out (${SOURCE_URL})`);
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  throw new Error(`Denylist fetch failed (${SOURCE_URL}): ${message}`);
 }
 
 const text = await response.text();
