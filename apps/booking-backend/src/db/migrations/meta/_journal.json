@@ -22,6 +22,13 @@
       "when": 1769950000000,
       "tag": "0002_unified_users_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770065662226,
+      "tag": "0003_users_fname_lname",
+      "breakpoints": true
     }
   ]
 }
