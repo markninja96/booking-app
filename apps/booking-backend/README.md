@@ -81,6 +81,14 @@ curl -sS -X POST http://localhost:3000/api/auth/register \
   -d '{"fname":"Ada","lname":"Lovelace","email":"ada@example.com","password":"StrongPass123!"}'
 ```
 
+Response:
+
+```json
+{
+  "accessToken": "<jwt>"
+}
+```
+
 Login:
 
 ```bash
@@ -89,11 +97,31 @@ curl -sS -X POST http://localhost:3000/api/auth/login \
   -d '{"email":"ada@example.com","password":"StrongPass123!"}'
 ```
 
+Response:
+
+```json
+{
+  "accessToken": "<jwt>"
+}
+```
+
 /me:
 
 ```bash
 curl -sS http://localhost:3000/api/me \
   -H 'Authorization: Bearer <accessToken>'
+```
+
+Response:
+
+```json
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "roles": [],
+  "activeRole": null,
+  "actorUserId": null,
+  "subjectUserId": null
+}
 ```
 
 Dev token (local only, requires `AUTH_DEV_TOKENS=true` and non-production):
