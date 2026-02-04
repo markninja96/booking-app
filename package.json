@@ -4,17 +4,24 @@
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "refresh:password-denylist": "node apps/booking-backend/scripts/refresh-password-denylist.mjs"
   },
   "private": true,
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "zod": "^3.24.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -34,8 +41,12 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@swc/jest": "~0.2.38",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "20.19.9",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^6.0.3",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "husky": "^9.1.6",
@@ -44,6 +55,7 @@
     "jest-util": "^30.0.2",
     "nx": "22.4.2",
     "prettier": "~3.6.2",
+    "supertest": "^7.1.4",
     "ts-jest": "^29.4.0",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",

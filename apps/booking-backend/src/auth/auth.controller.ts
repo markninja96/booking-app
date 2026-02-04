@@ -1,0 +1,124 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+} from '@nestjs/common';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ConfigService } from '@nestjs/config';
+import { z } from 'zod';
+import { AuthService } from './auth.service';
+
+const DEFAULT_PASSWORD_DENYLIST = new Set([
+  'Password123!',
+  'Password123@',
+  'Password123#',
+  'Qwerty123!',
+  'Qwerty123@',
+  'Qwerty123#',
+  'Letmein123!',
+  'Letmein123@',
+  'Letmein123#',
+]);
+
+const loadPasswordDenylist = (): Set<string> => {
+  const candidates = [
+    join(process.cwd(), 'apps/booking-backend/src/auth/password-denylist.txt'),
+    join(__dirname, 'password-denylist.txt'),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      const contents = readFileSync(filePath, 'utf-8');
+      const entries = contents
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+      if (entries.length > 0) {
+        return new Set(entries);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return DEFAULT_PASSWORD_DENYLIST;
+};
+
+const PASSWORD_DENYLIST = loadPasswordDenylist();
+
+const passwordSchema = z
+  .string()
+  .min(12, { message: 'Password must be at least 12 characters' })
+  .regex(/[a-z]/, { message: 'Password must include a lowercase letter' })
+  .regex(/[A-Z]/, { message: 'Password must include an uppercase letter' })
+  .regex(/\d/, { message: 'Password must include a number' })
+  .regex(/[^A-Za-z\d]/, { message: 'Password must include a symbol' })
+  .refine((value) => !PASSWORD_DENYLIST.has(value), {
+    message: 'Password is too common',
+  });
+
+const registerSchema = z.object({
+  fname: z.string().min(1),
+  lname: z.string().min(1),
+  email: z.string().email(),
+  password: passwordSchema,
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+const devTokenSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+@Controller('auth')
+export class AuthController {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  @Post('register')
+  async register(@Body() body: unknown): Promise<{ accessToken: string }> {
+    const params = parseBody(registerSchema, body);
+    return this.authService.register(params);
+  }
+
+  @HttpCode(200)
+  @Post('login')
+  async login(@Body() body: unknown): Promise<{ accessToken: string }> {
+    const params = parseBody(loginSchema, body);
+    return this.authService.login(params);
+  }
+
+  @Post('dev-token')
+  async devToken(@Body() body: unknown): Promise<{ accessToken: string }> {
+    const devTokensEnabled =
+      this.configService.get<string>('AUTH_DEV_TOKENS') === 'true';
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+
+    if (!devTokensEnabled || nodeEnv === 'production') {
+      throw new BadRequestException('Dev tokens are disabled');
+    }
+
+    const params = parseBody(devTokenSchema, body);
+    await this.authService.ensureUserExists(params.userId);
+    return {
+      accessToken: await this.authService.createAccessToken(params.userId),
+    };
+  }
+}
+
+const parseBody = <T>(schema: z.ZodSchema<T>, body: unknown): T => {
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    throw new BadRequestException(result.error.flatten());
+  }
+  return result.data;
+};

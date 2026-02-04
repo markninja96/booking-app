@@ -66,7 +66,7 @@ Note: Due to Stage 3 changes, Stage 2 must be re-executed before starting Stage 
 
 ### Schema must include
 
-- `users` (id, name, email unique, password_hash nullable, created_at, updated_at)
+- `users` (id, fname, lname, email unique, password_hash nullable, created_at, updated_at)
 - `provider_profiles` (user_id pk/fk->users.id, business_name, created_at, updated_at)
 - `customer_profiles` (user_id pk/fk->users.id, created_at, updated_at)
 - `bookings` with:
@@ -117,7 +117,7 @@ Note: Due to Stage 3 changes, Stage 2 must be re-executed before starting Stage 
   - `user_roles(user_id, role)` with unique(user_id, role)
   - roles: `admin | provider | customer`
 - Update registration to assign role + create matching profile row:
-  - `POST /auth/register` accepts `{ name, email, password, role: 'customer'|'provider', businessName?: string }`
+  - `POST /auth/register` accepts `{ fname, lname, email, password, role: 'customer'|'provider', businessName?: string }`
   - If role=provider → require `businessName` and ensure provider_profile exists
   - If role=customer → ensure customer_profile exists
   - JWT must include `roles[]` and initialize `activeRole` to the registered role
