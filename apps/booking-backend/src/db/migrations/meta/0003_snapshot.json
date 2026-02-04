@@ -136,26 +136,18 @@
         "bookings_provider_user_id_provider_profiles_user_id_fk": {
           "name": "bookings_provider_user_id_provider_profiles_user_id_fk",
           "tableFrom": "bookings",
-          "columnsFrom": [
-            "provider_user_id"
-          ],
+          "columnsFrom": ["provider_user_id"],
           "tableTo": "provider_profiles",
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsTo": ["user_id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         },
         "bookings_customer_user_id_customer_profiles_user_id_fk": {
           "name": "bookings_customer_user_id_customer_profiles_user_id_fk",
           "tableFrom": "bookings",
-          "columnsFrom": [
-            "customer_user_id"
-          ],
+          "columnsFrom": ["customer_user_id"],
           "tableTo": "customer_profiles",
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsTo": ["user_id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         }
@@ -196,13 +188,9 @@
         "customer_profiles_user_id_users_id_fk": {
           "name": "customer_profiles_user_id_users_id_fk",
           "tableFrom": "customer_profiles",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         }
@@ -249,13 +237,9 @@
         "provider_profiles_user_id_users_id_fk": {
           "name": "provider_profiles_user_id_users_id_fk",
           "tableFrom": "provider_profiles",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         }
@@ -277,8 +261,14 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
+        "fname": {
+          "name": "fname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lname": {
+          "name": "lname",
           "type": "text",
           "primaryKey": false,
           "notNull": true
