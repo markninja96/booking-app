@@ -4,7 +4,8 @@
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "refresh:password-denylist": "node apps/booking-backend/scripts/refresh-password-denylist.mjs"
   },
   "private": true,
   "dependencies": {
