@@ -74,7 +74,7 @@ describeAuth('auth stage 3A', () => {
       })
       .expect(400);
 
-    expect(response.body.password).toEqual(
+    expect(response.body.fieldErrors?.password).toEqual(
       expect.arrayContaining([
         'Password must include an uppercase letter',
         'Password must include a symbol',
@@ -93,7 +93,7 @@ describeAuth('auth stage 3A', () => {
       })
       .expect(400);
 
-    expect(response.body.password).toEqual(
+    expect(response.body.fieldErrors?.password).toEqual(
       expect.arrayContaining(['Password is too common']),
     );
   });

@@ -118,7 +118,7 @@ export class AuthController {
 const parseBody = <T>(schema: z.ZodSchema<T>, body: unknown): T => {
   const result = schema.safeParse(body);
   if (!result.success) {
-    throw new BadRequestException(result.error.flatten().fieldErrors);
+    throw new BadRequestException(result.error.flatten());
   }
   return result.data;
 };
