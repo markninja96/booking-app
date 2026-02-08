@@ -96,12 +96,16 @@ Stage 3B: Roles + Active Role Switching + Admin Bootstrap (STOP when done)
 - Update registration to assign role + create matching profile row:
   - POST /auth/register accepts { fname, lname, email, password, role: 'customer'|'provider', businessName?: string }
   - If role=provider → require businessName and ensure provider_profile exists
+  - If role=provider → also ensure customer_profile exists so providers can switch to customer
   - If role=customer → ensure customer_profile exists
 - JWT must include roles[] and initialize activeRole to the registered role
 - Add active role switching:
   - POST /auth/active-role (guarded) body { activeRole: 'customer'|'provider' }
   - validates caller has role + matching profile exists
   - returns re-issued { accessToken } with updated activeRole
+- Add self-serve provider upgrade:
+  - POST /auth/upgrade/provider (guarded) body { businessName: string }
+  - grants provider role and creates provider_profile if missing
 - Deterministic admin bootstrap (choose one; document):
   - BOOTSTRAP_ADMIN_EMAIL ensures admin role for an existing user (no implicit user creation), OR
   - seed/migration-based bootstrap

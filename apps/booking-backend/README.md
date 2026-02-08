@@ -29,11 +29,18 @@ Required variables:
 Optional for docker-compose:
 
 - `POSTGRES_PORT` (default 5432)
+- `BOOTSTRAP_ADMIN_EMAIL`
 
 ## Run (dev)
 
 ```bash
 pnpm nx serve booking-backend
+```
+
+If Nx warns that the daemon is not running (no auto-restart on changes), run:
+
+```bash
+pnpm nx daemon --start
 ```
 
 ## Local dependencies
@@ -73,12 +80,14 @@ docker compose -f apps/booking-backend/docker-compose.yml exec postgres \
 
 Password rules: min 12 chars, at least one lowercase, one uppercase, one number, and one symbol. Common passwords are rejected based on `apps/booking-backend/src/auth/password-denylist.txt`.
 
+Admin bootstrap: set `BOOTSTRAP_ADMIN_EMAIL` to an existing user email to grant the `admin` role (no implicit user creation).
+
 Register:
 
 ```bash
 curl -sS -X POST http://localhost:3000/api/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"fname":"Ada","lname":"Lovelace","email":"ada@example.com","password":"StrongPass123!"}'
+  -d '{"fname":"Ada","lname":"Lovelace","email":"ada@example.com","password":"StrongPass123!","role":"customer"}'
 ```
 
 Response:
@@ -117,11 +126,52 @@ Response:
 ```json
 {
   "userId": "00000000-0000-0000-0000-000000000000",
-  "roles": [],
-  "activeRole": null,
+  "roles": ["customer"],
+  "activeRole": "customer",
   "actorUserId": null,
   "subjectUserId": null
 }
+```
+
+Active role switch:
+
+```bash
+curl -sS -X POST http://localhost:3000/api/auth/active-role \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <accessToken>' \
+  -d '{"activeRole":"provider"}'
+```
+
+Response:
+
+```json
+{
+  "accessToken": "<jwt>"
+}
+```
+
+Upgrade to provider:
+
+```bash
+curl -sS -X POST http://localhost:3000/api/auth/upgrade/provider \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <accessToken>' \
+  -d '{"businessName":"Ada Consulting"}'
+```
+
+Response:
+
+```json
+{
+  "accessToken": "<jwt>"
+}
+```
+
+Admin ping:
+
+```bash
+curl -sS http://localhost:3000/api/admin/ping \
+  -H 'Authorization: Bearer <accessToken>'
 ```
 
 Dev token (local only, requires `AUTH_DEV_TOKENS=true` and non-production):

@@ -4,12 +4,17 @@ import {
   Controller,
   HttpCode,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthUser } from './auth.types';
 
 const DEFAULT_PASSWORD_DENYLIST = new Set([
   'Password123!',
@@ -61,12 +66,24 @@ const passwordSchema = z
     message: 'Password is too common',
   });
 
-const registerSchema = z.object({
-  fname: z.string().min(1),
-  lname: z.string().min(1),
-  email: z.string().email(),
-  password: passwordSchema,
-});
+const registerSchema = z
+  .object({
+    fname: z.string().min(1),
+    lname: z.string().min(1),
+    email: z.string().email(),
+    password: passwordSchema,
+    role: z.enum(['customer', 'provider']),
+    businessName: z.string().min(1).optional(),
+  })
+  .superRefine((values, ctx) => {
+    if (values.role === 'provider' && !values.businessName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Business name is required',
+        path: ['businessName'],
+      });
+    }
+  });
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -75,6 +92,14 @@ const loginSchema = z.object({
 
 const devTokenSchema = z.object({
   userId: z.string().uuid(),
+});
+
+const activeRoleSchema = z.object({
+  activeRole: z.enum(['customer', 'provider']),
+});
+
+const providerUpgradeSchema = z.object({
+  businessName: z.string().min(1),
 });
 
 @Controller('auth')
@@ -108,10 +133,33 @@ export class AuthController {
     }
 
     const params = parseBody(devTokenSchema, body);
-    await this.authService.ensureUserExists(params.userId);
     return {
-      accessToken: await this.authService.createAccessToken(params.userId),
+      accessToken: await this.authService.createAccessTokenForUser(
+        params.userId,
+      ),
     };
+  }
+
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Post('active-role')
+  async activeRole(
+    @Req() req: Request & { user: AuthUser },
+    @Body() body: unknown,
+  ): Promise<{ accessToken: string }> {
+    const params = parseBody(activeRoleSchema, body);
+    return this.authService.setActiveRole(req.user.userId, params.activeRole);
+  }
+
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Post('upgrade/provider')
+  async upgradeToProvider(
+    @Req() req: Request & { user: AuthUser },
+    @Body() body: unknown,
+  ): Promise<{ accessToken: string }> {
+    const params = parseBody(providerUpgradeSchema, body);
+    return this.authService.upgradeToProvider(req.user.userId, params);
   }
 }
 
