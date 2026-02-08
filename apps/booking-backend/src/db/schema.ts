@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   index,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -16,6 +17,7 @@ export const users = pgTable(
     lname: text('lname').notNull(),
     email: text('email').notNull(),
     passwordHash: text('password_hash'),
+    activeRole: text('active_role'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -98,5 +100,21 @@ export const bookings = pgTable(
     )
       .on(table.providerUserId, table.idempotencyKey)
       .where(sql`${table.idempotencyKey} is not null`),
+  }),
+);
+
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'restrict',
+        onUpdate: 'cascade',
+      }),
+    role: text('role').notNull(),
+  },
+  (table) => ({
+    primaryKey: primaryKey({ columns: [table.userId, table.role] }),
   }),
 );
