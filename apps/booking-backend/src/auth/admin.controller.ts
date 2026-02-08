@@ -1,13 +1,13 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { Roles } from './roles.decorator';
+import { roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminController {
   @Get('ping')
-  @Roles('admin')
+  @roles('admin')
   ping(): { ok: true } {
     return { ok: true };
   }
