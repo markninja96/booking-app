@@ -9,6 +9,15 @@ import session from 'express-session';
 import passport from 'passport';
 import { AppModule } from './app/app.module';
 
+/**
+ * Create and configure the NestJS application, enable session and Passport middleware, and start the HTTP server.
+ *
+ * Reads `SESSION_SECRET` or `JWT_SECRET` from the environment and uses it as the session secret; throws if neither is set.
+ * Configures express-session with httpOnly cookies, `sameSite: 'lax'`, and `secure` enabled when `NODE_ENV` is `'production'`.
+ * Sets the global API prefix to `api`, listens on `process.env.PORT` or `3000`, and logs the application URL.
+ *
+ * @throws Error when neither `SESSION_SECRET` nor `JWT_SECRET` is defined in the environment.
+ */
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const { SESSION_SECRET, JWT_SECRET } = process.env;
