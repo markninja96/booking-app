@@ -7,18 +7,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { hash, compare } from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { DRIZZLE_DB } from '../db/drizzle';
 import type { DbClient } from '../db/drizzle';
 import {
+  authIdentities,
   customerProfiles,
   providerProfiles,
   userRoles,
   users,
 } from '../db/schema';
 import type { JwtPayload, UserRole } from './auth.types';
+import type { Profile } from 'passport-google-oauth20';
 
 @Injectable()
 export class AuthService {
@@ -254,6 +256,245 @@ export class AuthService {
         activeRole: nextActiveRole,
       }),
     };
+  }
+
+  async grantRoleToUser(params: {
+    userId: string;
+    role: UserRole;
+    businessName?: string;
+  }): Promise<{ roles: UserRole[]; activeRole: UserRole | null }> {
+    return this.db.transaction(async (tx) => {
+      const [user] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, params.userId))
+        .limit(1);
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (params.role === 'provider') {
+        const [profile] = await tx
+          .select({ userId: providerProfiles.userId })
+          .from(providerProfiles)
+          .where(eq(providerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!profile) {
+          if (!params.businessName) {
+            throw new BadRequestException('Business name is required');
+          }
+          await tx.insert(providerProfiles).values({
+            userId: params.userId,
+            businessName: params.businessName,
+          });
+        }
+
+        await tx
+          .insert(userRoles)
+          .values({ userId: params.userId, role: 'customer' })
+          .onConflictDoNothing();
+
+        const [customerProfile] = await tx
+          .select({ userId: customerProfiles.userId })
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!customerProfile) {
+          await tx.insert(customerProfiles).values({ userId: params.userId });
+        }
+      }
+
+      if (params.role === 'customer') {
+        const [profile] = await tx
+          .select({ userId: customerProfiles.userId })
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!profile) {
+          await tx.insert(customerProfiles).values({ userId: params.userId });
+        }
+      }
+
+      await tx
+        .insert(userRoles)
+        .values({ userId: params.userId, role: params.role })
+        .onConflictDoNothing();
+
+      const roleRows = await tx
+        .select({ role: userRoles.role })
+        .from(userRoles)
+        .where(eq(userRoles.userId, params.userId))
+        .orderBy(asc(userRoles.role));
+
+      const roles = roleRows.map((row) => row.role as UserRole);
+      const [activeRow] = await tx
+        .select({ activeRole: users.activeRole })
+        .from(users)
+        .where(eq(users.id, params.userId))
+        .limit(1);
+
+      const activeRole = this.resolveActiveRole(
+        (activeRow?.activeRole ?? null) as UserRole | null,
+        roles,
+      );
+
+      if (!activeRole && params.role !== 'admin') {
+        await tx
+          .update(users)
+          .set({ activeRole: params.role })
+          .where(eq(users.id, params.userId));
+        return { roles, activeRole: params.role };
+      }
+
+      return { roles, activeRole };
+    });
+  }
+
+  async revokeRoleFromUser(params: {
+    userId: string;
+    role: UserRole;
+  }): Promise<{ roles: UserRole[]; activeRole: UserRole | null }> {
+    const [user] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.db
+      .delete(userRoles)
+      .where(
+        and(
+          eq(userRoles.userId, params.userId),
+          eq(userRoles.role, params.role),
+        ),
+      );
+
+    const roles = await this.getUserRoles(params.userId);
+    const [row] = await this.db
+      .select({ activeRole: users.activeRole })
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1);
+
+    const currentActive = row?.activeRole as UserRole | null;
+    if (currentActive === params.role) {
+      const nextActive = this.getDefaultActiveRole(roles);
+      await this.db
+        .update(users)
+        .set({ activeRole: nextActive })
+        .where(eq(users.id, params.userId));
+      return { roles, activeRole: nextActive };
+    }
+
+    return {
+      roles,
+      activeRole: this.resolveActiveRole(currentActive, roles),
+    };
+  }
+
+  async startImpersonation(params: {
+    actorUserId: string;
+    subjectUserId: string;
+  }): Promise<{ accessToken: string }> {
+    await this.ensureUserExists(params.subjectUserId);
+    const roles = await this.getUserRoles(params.subjectUserId);
+    const activeRole = await this.getUserActiveRole(
+      params.subjectUserId,
+      roles,
+    );
+
+    return {
+      accessToken: await this.createAccessToken({
+        userId: params.subjectUserId,
+        roles,
+        activeRole,
+        actorUserId: params.actorUserId,
+        subjectUserId: params.subjectUserId,
+      }),
+    };
+  }
+
+  async stopImpersonation(
+    actorUserId: string,
+  ): Promise<{ accessToken: string }> {
+    const accessToken = await this.createAccessTokenForUser(actorUserId);
+    return { accessToken };
+  }
+
+  async handleGoogleLogin(profile: Profile): Promise<{ userId: string }> {
+    const providerUserId = profile.id;
+    const [identity] = await this.db
+      .select({ userId: authIdentities.userId })
+      .from(authIdentities)
+      .where(
+        and(
+          eq(authIdentities.oauthProvider, 'google'),
+          eq(authIdentities.providerUserId, providerUserId),
+        ),
+      )
+      .limit(1);
+
+    if (identity) {
+      return { userId: identity.userId };
+    }
+
+    const email = profile.emails?.[0]?.value?.toLowerCase();
+    if (!email) {
+      throw new BadRequestException('Google account email is required');
+    }
+
+    const [existingUser] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    const userId = await this.db.transaction(async (tx) => {
+      let userIdValue = existingUser?.id;
+      if (!userIdValue) {
+        const fname = profile.name?.givenName ?? 'Google';
+        const lname = profile.name?.familyName ?? 'User';
+        const [created] = await tx
+          .insert(users)
+          .values({
+            fname,
+            lname,
+            email,
+            passwordHash: null,
+            activeRole: 'customer',
+          })
+          .returning({ id: users.id });
+
+        await tx
+          .insert(userRoles)
+          .values({ userId: created.id, role: 'customer' })
+          .onConflictDoNothing();
+
+        await tx.insert(customerProfiles).values({ userId: created.id });
+        userIdValue = created.id;
+      }
+
+      await tx
+        .insert(authIdentities)
+        .values({
+          userId: userIdValue,
+          oauthProvider: 'google',
+          providerUserId,
+        })
+        .onConflictDoNothing();
+
+      return userIdValue;
+    });
+
+    return { userId };
   }
 
   async ensureUserExists(userId: string): Promise<void> {

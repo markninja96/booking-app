@@ -31,6 +31,12 @@ Optional for docker-compose:
 - `POSTGRES_PORT` (default 5432)
 - `BOOTSTRAP_ADMIN_EMAIL`
 
+Optional for Google OAuth:
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_CALLBACK_URL`
+
 ## Run (dev)
 
 ```bash
@@ -180,6 +186,22 @@ Dev token (local only, requires `AUTH_DEV_TOKENS=true` and non-production):
 curl -sS -X POST http://localhost:3000/api/auth/dev-token \
   -H 'Content-Type: application/json' \
   -d '{"userId":"00000000-0000-0000-0000-000000000000"}'
+```
+
+## Auth (Google OAuth)
+
+Start OAuth flow:
+
+```bash
+open "http://localhost:3000/api/auth/google"
+```
+
+Callback returns a JSON access token:
+
+```json
+{
+  "accessToken": "<jwt>"
+}
 ```
 
 ## Build

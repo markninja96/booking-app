@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   Post,
   Req,
@@ -12,6 +13,7 @@ import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 import type { Request } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthUser } from './auth.types';
@@ -113,6 +115,24 @@ export class AuthController {
   async register(@Body() body: unknown): Promise<{ accessToken: string }> {
     const params = parseBody(registerSchema, body);
     return this.authService.register(params);
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(): Promise<{ ok: true }> {
+    return { ok: true };
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @Req() req: Request & { user: { userId: string } },
+  ): Promise<{ accessToken: string }> {
+    return {
+      accessToken: await this.authService.createAccessTokenForUser(
+        req.user.userId,
+      ),
+    };
   }
 
   @HttpCode(200)

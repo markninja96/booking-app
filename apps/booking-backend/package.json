@@ -113,14 +113,21 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "connect-redis": "^9.0.0",
     "drizzle-orm": "0.45.1",
+    "express-session": "^1.19.0",
+    "passport-google-oauth20": "2.0.0",
     "pg": "8.17.2",
+    "redis": "^5.10.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
+    "@types/express-session": "^1.18.2",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "2.0.17",
     "@types/pg": "8.16.0",
     "drizzle-kit": "0.31.8"
   }

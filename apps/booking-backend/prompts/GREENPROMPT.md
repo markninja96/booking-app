@@ -120,21 +120,28 @@ Stage 3B: Roles + Active Role Switching + Admin Bootstrap (STOP when done)
 Stage 3C: Admin Role Mgmt + Impersonation + Google OAuth (STOP when done)
 
 - Add OAuth identity linking:
-  - auth_identities(user_id, provider, provider_user_id) unique(provider, provider_user_id)
+  - auth_identities(user_id, oauth_provider, provider_user_id)
+  - primary key (oauth_provider, provider_user_id)
+  - unique(user_id, oauth_provider)
 - Google OAuth via Passport:
   - GET /auth/google
   - GET /auth/google/callback
+  - Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL
+  - Scopes: profile, email
   - If identity exists → login
   - Else → create user + identity link + assign default role customer + ensure customer_profile exists
+  - Token payload must include roles[] and activeRole consistent with Stage 3B (persisted active_role)
 - Admin role management (admin-only):
   - POST /admin/users/:id/roles/grant { role, businessName? }
     - if granting provider and profile missing → require businessName and create provider_profile
     - if granting customer and profile missing → create customer_profile
   - POST /admin/users/:id/roles/revoke { role }
+    - if revoking current active_role → reset to next available non-admin role or Customer which will be our default role
 - Impersonation (admin-only):
   - POST /admin/impersonation/start { subjectUserId } → returns { accessToken } with actorUserId + subjectUserId
   - POST /admin/impersonation/stop → returns non-impersonated token
 - Invariant: normal endpoints evaluate roles/identity as subject; admin-only endpoints authorize via actor
+  - Guard rule: admin checks must use actorUserId when present; all other role checks use subjectUserId when present
 - /me must reflect impersonation context accurately (actorUserId + subjectUserId)
 - (3C must include tests)
   - non-admin cannot grant roles
@@ -142,6 +149,7 @@ Stage 3C: Admin Role Mgmt + Impersonation + Google OAuth (STOP when done)
   - impersonation start requires admin
   - while impersonating: /me shows actor+subject
   - while impersonating: no privilege leakage on non-admin endpoints (subject permissions apply)
+  - add at least one role-gated non-admin endpoint for validation
 
 Provide local dev tokens (applies across Stage 3)
 

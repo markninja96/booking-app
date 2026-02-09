@@ -118,3 +118,32 @@ export const userRoles = pgTable(
     primaryKey: primaryKey({ columns: [table.userId, table.role] }),
   }),
 );
+
+export const authIdentities = pgTable(
+  'auth_identities',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'restrict',
+        onUpdate: 'cascade',
+      }),
+    oauthProvider: text('oauth_provider').notNull(),
+    providerUserId: text('provider_user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    primaryKey: primaryKey({
+      columns: [table.oauthProvider, table.providerUserId],
+    }),
+    providerUserIdUnique: uniqueIndex(
+      'auth_identities_provider_provider_user_id_unique',
+    ).on(table.oauthProvider, table.providerUserId),
+    userIdProviderUnique: uniqueIndex(
+      'auth_identities_user_id_provider_unique',
+    ).on(table.userId, table.oauthProvider),
+    userIdIdx: index('auth_identities_user_id_idx').on(table.userId),
+  }),
+);
