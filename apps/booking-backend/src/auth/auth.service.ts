@@ -336,6 +336,16 @@ export class AuthService {
     userId: string;
     role: UserRole;
   }): Promise<{ roles: UserRole[]; activeRole: UserRole | null }> {
+    const [user] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, params.userId))
+      .limit(1);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     await this.db
       .delete(userRoles)
       .where(

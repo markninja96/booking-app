@@ -302,9 +302,7 @@ describeAuth('auth stage 3C', () => {
       .send({ role: 'provider' })
       .expect(400);
 
-    expect(missingBusiness.body.fieldErrors?.businessName).toEqual(
-      expect.arrayContaining(['Business name is required']),
-    );
+    expect(missingBusiness.body.message).toBe('Business name is required');
 
     const grantResponse = await request(app.getHttpServer())
       .post(`/admin/users/${payload.sub}/roles/grant`)

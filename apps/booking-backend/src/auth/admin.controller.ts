@@ -70,20 +70,10 @@ export class AdminController {
   }
 }
 
-const grantRoleSchema = z
-  .object({
-    role: z.enum(['admin', 'provider', 'customer']),
-    businessName: z.string().min(1).optional(),
-  })
-  .superRefine((values, ctx) => {
-    if (values.role === 'provider' && !values.businessName) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Business name is required',
-        path: ['businessName'],
-      });
-    }
-  });
+const grantRoleSchema = z.object({
+  role: z.enum(['admin', 'provider', 'customer']),
+  businessName: z.string().min(1).optional(),
+});
 
 const revokeRoleSchema = z.object({
   role: z.enum(['admin', 'provider', 'customer']),
