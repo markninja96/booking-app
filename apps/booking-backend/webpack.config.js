@@ -10,6 +10,22 @@ module.exports = {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
   },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        enforce: 'pre',
+        use: ['source-map-loader'],
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  ignoreWarnings: [
+    {
+      module: /node_modules/,
+      message: /Failed to parse source map/,
+    },
+  ],
   plugins: [
     new webpack.IgnorePlugin({ resourceRegExp: /^pg-native$/ }),
     new NxAppWebpackPlugin({
