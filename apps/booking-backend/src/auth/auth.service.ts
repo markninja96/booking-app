@@ -263,73 +263,95 @@ export class AuthService {
     role: UserRole;
     businessName?: string;
   }): Promise<{ roles: UserRole[]; activeRole: UserRole | null }> {
-    await this.ensureUserExists(params.userId);
-
-    if (params.role === 'provider') {
-      const [profile] = await this.db
-        .select({ userId: providerProfiles.userId })
-        .from(providerProfiles)
-        .where(eq(providerProfiles.userId, params.userId))
+    return this.db.transaction(async (tx) => {
+      const [user] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, params.userId))
         .limit(1);
 
-      if (!profile) {
-        if (!params.businessName) {
-          throw new BadRequestException('Business name is required');
-        }
-        await this.db.insert(providerProfiles).values({
-          userId: params.userId,
-          businessName: params.businessName,
-        });
+      if (!user) {
+        throw new NotFoundException('User not found');
       }
 
-      await this.db
+      if (params.role === 'provider') {
+        const [profile] = await tx
+          .select({ userId: providerProfiles.userId })
+          .from(providerProfiles)
+          .where(eq(providerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!profile) {
+          if (!params.businessName) {
+            throw new BadRequestException('Business name is required');
+          }
+          await tx.insert(providerProfiles).values({
+            userId: params.userId,
+            businessName: params.businessName,
+          });
+        }
+
+        await tx
+          .insert(userRoles)
+          .values({ userId: params.userId, role: 'customer' })
+          .onConflictDoNothing();
+
+        const [customerProfile] = await tx
+          .select({ userId: customerProfiles.userId })
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!customerProfile) {
+          await tx.insert(customerProfiles).values({ userId: params.userId });
+        }
+      }
+
+      if (params.role === 'customer') {
+        const [profile] = await tx
+          .select({ userId: customerProfiles.userId })
+          .from(customerProfiles)
+          .where(eq(customerProfiles.userId, params.userId))
+          .limit(1);
+
+        if (!profile) {
+          await tx.insert(customerProfiles).values({ userId: params.userId });
+        }
+      }
+
+      await tx
         .insert(userRoles)
-        .values({ userId: params.userId, role: 'customer' })
+        .values({ userId: params.userId, role: params.role })
         .onConflictDoNothing();
 
-      const [customerProfile] = await this.db
-        .select({ userId: customerProfiles.userId })
-        .from(customerProfiles)
-        .where(eq(customerProfiles.userId, params.userId))
+      const roleRows = await tx
+        .select({ role: userRoles.role })
+        .from(userRoles)
+        .where(eq(userRoles.userId, params.userId))
+        .orderBy(asc(userRoles.role));
+
+      const roles = roleRows.map((row) => row.role as UserRole);
+      const [activeRow] = await tx
+        .select({ activeRole: users.activeRole })
+        .from(users)
+        .where(eq(users.id, params.userId))
         .limit(1);
 
-      if (!customerProfile) {
-        await this.db
-          .insert(customerProfiles)
-          .values({ userId: params.userId });
+      const activeRole = this.resolveActiveRole(
+        (activeRow?.activeRole ?? null) as UserRole | null,
+        roles,
+      );
+
+      if (!activeRole && params.role !== 'admin') {
+        await tx
+          .update(users)
+          .set({ activeRole: params.role })
+          .where(eq(users.id, params.userId));
+        return { roles, activeRole: params.role };
       }
-    }
 
-    if (params.role === 'customer') {
-      const [profile] = await this.db
-        .select({ userId: customerProfiles.userId })
-        .from(customerProfiles)
-        .where(eq(customerProfiles.userId, params.userId))
-        .limit(1);
-
-      if (!profile) {
-        await this.db
-          .insert(customerProfiles)
-          .values({ userId: params.userId });
-      }
-    }
-
-    await this.db
-      .insert(userRoles)
-      .values({ userId: params.userId, role: params.role })
-      .onConflictDoNothing();
-
-    const roles = await this.getUserRoles(params.userId);
-    const activeRole = await this.getUserActiveRole(params.userId, roles);
-    if (!activeRole && params.role !== 'admin') {
-      await this.db
-        .update(users)
-        .set({ activeRole: params.role })
-        .where(eq(users.id, params.userId));
-      return { roles, activeRole: params.role };
-    }
-
-    return { roles, activeRole };
+      return { roles, activeRole };
+    });
   }
 
   async revokeRoleFromUser(params: {

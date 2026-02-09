@@ -11,9 +11,10 @@ import { AppModule } from './app/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const sessionSecret = process.env.SESSION_SECRET ?? process.env.JWT_SECRET;
+  const { SESSION_SECRET, JWT_SECRET } = process.env;
+  const sessionSecret = SESSION_SECRET ?? JWT_SECRET;
   if (!sessionSecret) {
-    throw new Error('SESSION_SECRET is required');
+    throw new Error('SESSION_SECRET or JWT_SECRET is required');
   }
 
   app.use(
