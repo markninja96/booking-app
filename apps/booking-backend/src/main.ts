@@ -3,7 +3,7 @@
  * This is only a minimal backend to get started.
  */
 
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
@@ -16,10 +16,19 @@ async function bootstrap() {
   const { SESSION_SECRET, JWT_SECRET, REDIS_URL } = process.env;
   const sessionSecret = SESSION_SECRET ?? JWT_SECRET;
   if (!sessionSecret) {
-    throw new Error('SESSION_SECRET or JWT_SECRET is required');
+    throw new BadRequestException(
+      'SESSION_SECRET or JWT_SECRET is required for session storage',
+    );
   }
   if (!REDIS_URL) {
-    throw new Error('REDIS_URL is required for session storage');
+    throw new BadRequestException('REDIS_URL is required for session storage');
+  }
+
+  if (
+    process.env.TRUST_PROXY === 'true' ||
+    process.env.NODE_ENV === 'production'
+  ) {
+    app.set('trust proxy', 1);
   }
 
   const redisClient = createClient({ url: REDIS_URL });
