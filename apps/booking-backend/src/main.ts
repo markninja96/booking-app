@@ -6,19 +6,37 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import session from 'express-session';
+import { RedisStore } from 'connect-redis';
+import { createClient } from 'redis';
 import passport from 'passport';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const { SESSION_SECRET, JWT_SECRET } = process.env;
+  const { SESSION_SECRET, JWT_SECRET, REDIS_URL } = process.env;
   const sessionSecret = SESSION_SECRET ?? JWT_SECRET;
   if (!sessionSecret) {
     throw new Error('SESSION_SECRET or JWT_SECRET is required');
   }
+  if (!REDIS_URL) {
+    throw new Error('REDIS_URL is required for session storage');
+  }
+
+  const redisClient = createClient({ url: REDIS_URL });
+  redisClient.on('error', (error) => {
+    Logger.error('Redis session client error', error);
+  });
+  await redisClient.connect();
+
+  const redisStore = new RedisStore({
+    client: redisClient,
+    prefix: 'booking-app:sess:',
+    ttl: 60 * 60 * 24,
+  });
 
   app.use(
     session({
+      store: redisStore,
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
