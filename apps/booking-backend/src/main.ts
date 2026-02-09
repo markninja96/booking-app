@@ -5,6 +5,7 @@
 
 import { BadRequestException, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
@@ -12,7 +13,7 @@ import passport from 'passport';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const { SESSION_SECRET, JWT_SECRET, REDIS_URL } = process.env;
   const sessionSecret = SESSION_SECRET ?? JWT_SECRET;
   if (!sessionSecret) {
