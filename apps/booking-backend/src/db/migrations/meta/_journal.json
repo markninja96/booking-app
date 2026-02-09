@@ -50,6 +50,20 @@
       "when": 1770409784001,
       "tag": "0006_eminent_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770573027049,
+      "tag": "0007_bent_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770580000000,
+      "tag": "0008_azure_cyclops",
+      "breakpoints": true
     }
   ]
 }
