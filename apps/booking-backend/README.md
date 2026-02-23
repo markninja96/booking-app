@@ -43,6 +43,39 @@ Optional for Google OAuth:
 pnpm nx serve booking-backend
 ```
 
+## API Docs (Swagger)
+
+Swagger UI is available at:
+
+```
+http://localhost:3000/api/docs
+```
+
+OpenAPI JSON is available at:
+
+```
+http://localhost:3000/api/docs-json
+```
+
+Docs are enabled when `SWAGGER_ENABLED=true` or when `NODE_ENV` is not
+`production`.
+
+## Postman (Golden Paths)
+
+Import the collection at:
+
+```
+postman/booking-backend.postman_collection.json
+```
+
+Collection variables:
+
+- `baseUrl` (default `http://localhost:3000/api`)
+- `providerToken`
+- `customerToken`
+- `providerUserId`
+- `bookingId`
+
 If Nx warns that the daemon is not running (no auto-restart on changes), run:
 
 ```bash

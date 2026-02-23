@@ -6,6 +6,7 @@
 import { BadRequestException, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import session from 'express-session';
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
@@ -61,6 +62,20 @@ async function bootstrap() {
   app.use(passport.session());
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
+  const swaggerEnabled =
+    process.env.SWAGGER_ENABLED === 'true' ||
+    process.env.NODE_ENV !== 'production';
+
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('Booking Backend API')
+      .setDescription('API docs for booking backend')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
   const port = process.env.PORT || 3000;
   await app.listen(port);
   Logger.log(

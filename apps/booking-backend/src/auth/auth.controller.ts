@@ -14,6 +14,15 @@ import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 import type { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthUser } from './auth.types';
@@ -104,6 +113,7 @@ const providerUpgradeSchema = z.object({
   businessName: z.string().min(1),
 });
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -112,18 +122,53 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        fname: { type: 'string' },
+        lname: { type: 'string' },
+        email: { type: 'string' },
+        password: { type: 'string' },
+        role: { type: 'string', enum: ['customer', 'provider'] },
+        businessName: { type: 'string' },
+      },
+      required: ['fname', 'lname', 'email', 'password', 'role'],
+    },
+  })
+  @ApiCreatedResponse({
+    schema: {
+      type: 'object',
+      properties: { accessToken: { type: 'string' } },
+    },
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+    },
+  })
   async register(@Body() body: unknown): Promise<{ accessToken: string }> {
     const params = parseBody(registerSchema, body);
     return this.authService.register(params);
   }
 
   @Get('google')
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+  })
   @UseGuards(AuthGuard('google'))
   async googleAuth(): Promise<{ ok: true }> {
     return { ok: true };
   }
 
   @Get('google/callback')
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: { accessToken: { type: 'string' } },
+    },
+  })
   @UseGuards(AuthGuard('google'))
   async googleCallback(
     @Req() req: Request & { user: { userId: string } },
@@ -137,6 +182,28 @@ export class AuthController {
 
   @HttpCode(200)
   @Post('login')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string' },
+        password: { type: 'string' },
+      },
+      required: ['email', 'password'],
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: { accessToken: { type: 'string' } },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+    },
+  })
   async login(@Body() body: unknown): Promise<{ accessToken: string }> {
     const params = parseBody(loginSchema, body);
     return this.authService.login(params);
@@ -160,9 +227,31 @@ export class AuthController {
     };
   }
 
+  @ApiBearerAuth()
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @Post('active-role')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        activeRole: { type: 'string', enum: ['customer', 'provider'] },
+      },
+      required: ['activeRole'],
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: { accessToken: { type: 'string' } },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+    },
+  })
   async activeRole(
     @Req() req: Request & { user: AuthUser },
     @Body() body: unknown,
@@ -171,9 +260,29 @@ export class AuthController {
     return this.authService.setActiveRole(req.user.userId, params.activeRole);
   }
 
+  @ApiBearerAuth()
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   @Post('upgrade/provider')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { businessName: { type: 'string' } },
+      required: ['businessName'],
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: { accessToken: { type: 'string' } },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+    },
+  })
   async upgradeToProvider(
     @Req() req: Request & { user: AuthUser },
     @Body() body: unknown,

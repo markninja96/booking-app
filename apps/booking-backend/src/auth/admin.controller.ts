@@ -11,6 +11,14 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AdminGuard } from './admin.guard';
@@ -18,16 +26,64 @@ import type { AuthUser } from './auth.types';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
+@ApiTags('Admin')
+@ApiBearerAuth()
 export class AdminController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('ping')
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
+  @ApiForbiddenResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
   ping(): { ok: true } {
     return { ok: true };
   }
 
   @HttpCode(200)
   @Post('users/:id/roles/grant')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', enum: ['admin', 'provider', 'customer'] },
+        businessName: { type: 'string' },
+      },
+      required: ['role'],
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        roles: { type: 'array', items: { type: 'string' } },
+        activeRole: { type: 'string', nullable: true },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
+  @ApiForbiddenResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
   async grantRole(
     @Param('id') userId: string,
     @Body() body: unknown,
@@ -38,6 +94,36 @@ export class AdminController {
 
   @HttpCode(200)
   @Post('users/:id/roles/revoke')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', enum: ['admin', 'provider', 'customer'] },
+      },
+      required: ['role'],
+    },
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        roles: { type: 'array', items: { type: 'string' } },
+        activeRole: { type: 'string', nullable: true },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
+  @ApiForbiddenResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
   async revokeRole(
     @Param('id') userId: string,
     @Body() body: unknown,
@@ -48,6 +134,28 @@ export class AdminController {
 
   @HttpCode(200)
   @Post('impersonation/start')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { subjectUserId: { type: 'string' } },
+      required: ['subjectUserId'],
+    },
+  })
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { accessToken: { type: 'string' } } },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
+  @ApiForbiddenResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
   async startImpersonation(
     @Req() req: Request & { user: AuthUser },
     @Body() body: unknown,
@@ -62,6 +170,21 @@ export class AdminController {
 
   @HttpCode(200)
   @Post('impersonation/stop')
+  @ApiOkResponse({
+    schema: { type: 'object', properties: { accessToken: { type: 'string' } } },
+  })
+  @ApiUnauthorizedResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
+  @ApiForbiddenResponse({
+    schema: {
+      type: 'object',
+      properties: { code: { type: 'string' }, message: { type: 'string' } },
+    },
+  })
   async stopImpersonation(
     @Req() req: Request & { user: AuthUser },
   ): Promise<{ accessToken: string }> {
