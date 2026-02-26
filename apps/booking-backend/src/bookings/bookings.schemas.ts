@@ -13,19 +13,20 @@ const isIsoWithTimezone = (value: string): boolean => {
 
 const addMonths = (date: Date, months: number): Date => {
   const next = new Date(date.getTime());
+  const originalDay = next.getDate();
   next.setMonth(next.getMonth() + months);
+  if (next.getDate() !== originalDay) {
+    next.setDate(0);
+  }
   return next;
 };
 
 const validateCursorToken = (value: string): boolean => {
   try {
     const normalized = value.trim();
-    const decoded = Buffer.from(normalized, 'base64').toString('utf8');
-    const reencoded = Buffer.from(decoded, 'utf8')
-      .toString('base64')
-      .replace(/=+$/u, '');
-    const normalizedNoPad = normalized.replace(/=+$/u, '');
-    if (reencoded !== normalizedNoPad) {
+    const decoded = Buffer.from(normalized, 'base64url').toString('utf8');
+    const reencoded = Buffer.from(decoded, 'utf8').toString('base64url');
+    if (reencoded !== normalized) {
       return false;
     }
     const [startTime, id] = decoded.split('|');

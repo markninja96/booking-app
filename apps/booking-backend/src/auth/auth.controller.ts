@@ -145,7 +145,16 @@ export class AuthController {
   @ApiBadRequestResponse({
     schema: {
       type: 'object',
-      properties: { message: { type: 'string' } },
+      properties: {
+        formErrors: { type: 'array', items: { type: 'string' } },
+        fieldErrors: {
+          type: 'object',
+          additionalProperties: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
     },
   })
   async register(@Body() body: unknown): Promise<{ accessToken: string }> {

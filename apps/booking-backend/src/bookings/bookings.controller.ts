@@ -232,6 +232,7 @@ export class BookingsController {
     const updated = await this.bookingsService.updateStatus({
       bookingId: booking.id,
       status: body.status as BookingStatus,
+      currentStatus: booking.status as BookingStatus,
     });
 
     return { data: this.mapBooking(updated) };

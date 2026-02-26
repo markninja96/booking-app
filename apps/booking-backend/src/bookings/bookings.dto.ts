@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { BOOKING_STATUSES, type BookingStatus } from './bookings.types';
 
 export class BookingDto {
   @ApiProperty()
@@ -16,8 +17,8 @@ export class BookingDto {
   @ApiProperty({ example: '2030-01-01T11:00:00.000Z' })
   endTime!: string;
 
-  @ApiProperty({ enum: ['pending', 'confirmed', 'cancelled', 'completed'] })
-  status!: string;
+  @ApiProperty({ enum: BOOKING_STATUSES })
+  status!: BookingStatus;
 
   @ApiProperty({ example: '2030-01-01T09:00:00.000Z' })
   createdAt!: string;
@@ -44,8 +45,8 @@ export class CreateBookingRequestDto {
 }
 
 export class UpdateStatusRequestDto {
-  @ApiProperty({ enum: ['pending', 'confirmed', 'cancelled', 'completed'] })
-  status!: string;
+  @ApiProperty({ enum: BOOKING_STATUSES })
+  status!: BookingStatus;
 }
 
 export class BookingResponseDto {
@@ -57,7 +58,7 @@ export class ListBookingsResponseDto {
   @ApiProperty({ type: [BookingDto] })
   data!: BookingDto[];
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ type: 'string', nullable: true })
   nextCursor!: string | null;
 
   @ApiProperty()

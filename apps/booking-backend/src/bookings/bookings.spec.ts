@@ -163,28 +163,7 @@ describeBookings('bookings stage 4/5', () => {
     });
   });
 
-  it('rejects booking creation when activeRole is not customer', async () => {
-    const { accessToken: providerToken, userId: providerUserId } =
-      await registerUser('provider');
-    const { startTime, endTime } = createWindow(10, 60);
-
-    const response = await request(app.getHttpServer())
-      .post('/bookings')
-      .set('Authorization', `Bearer ${providerToken}`)
-      .send({
-        providerUserId,
-        startTime,
-        endTime,
-      })
-      .expect(403);
-
-    expect(response.body).toEqual({
-      code: 'FORBIDDEN',
-      message: 'Forbidden',
-    });
-  });
-
-  it('prevents providers from creating bookings', async () => {
+  it('rejects booking creation when requester is not a customer', async () => {
     const { accessToken: providerToken, userId: providerUserId } =
       await registerUser('provider');
     const { startTime, endTime } = createWindow(10, 60);
@@ -410,7 +389,11 @@ describeBookings('bookings stage 4/5', () => {
     expect(pageOne.body.nextCursor).toBeTruthy();
 
     const pageTwo = await request(app.getHttpServer())
-      .get(`/bookings?limit=2&cursor=${pageOne.body.nextCursor}`)
+      .get(
+        `/bookings?limit=2&cursor=${encodeURIComponent(
+          pageOne.body.nextCursor,
+        )}`,
+      )
       .set('Authorization', `Bearer ${customerToken}`)
       .expect(200);
 

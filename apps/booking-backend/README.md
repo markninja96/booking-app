@@ -47,13 +47,13 @@ pnpm nx serve booking-backend
 
 Swagger UI is available at:
 
-```
+```text
 http://localhost:3000/api/docs
 ```
 
 OpenAPI JSON is available at:
 
-```
+```text
 http://localhost:3000/api/docs-json
 ```
 
@@ -64,17 +64,24 @@ Docs are enabled when `SWAGGER_ENABLED=true` or when `NODE_ENV` is not
 
 Import the collection at:
 
-```
+```text
 postman/booking-backend.postman_collection.json
 ```
 
 Collection variables:
 
-- `baseUrl` (default `http://localhost:3000/api`)
-- `providerToken`
-- `customerToken`
-- `providerUserId`
-- `bookingId`
+- `baseUrl` (default `http://localhost:3000/api`) - API base URL for requests.
+- `providerToken` (default ``) - JWT for provider-authenticated requests.
+- `customerToken` (default ``) - JWT for customer-authenticated requests.
+- `providerUserId` (default ``) - Provider user ID from `/me`.
+- `adminToken` (default ``) - Admin JWT from login (bootstrap required).
+- `adminEmail` (default ``) - Admin email for login.
+- `adminPassword` (default ``) - Admin password for login.
+- `targetUserId` (default ``) - User ID to grant/revoke roles or impersonate.
+- `impersonationToken` (default ``) - JWT from impersonation start.
+- `bookingId` (default ``) - Booking ID from create booking response.
+- `providerEmail` (default ``) - Provider email used in registration/login.
+- `customerEmail` (default ``) - Customer email used in registration/login.
 
 If Nx warns that the daemon is not running (no auto-restart on changes), run:
 

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
@@ -31,17 +32,22 @@ type ListBookingsParams = {
 type UpdateStatusParams = {
   bookingId: string;
   status: BookingStatus;
+  currentStatus: BookingStatus;
 };
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(@Inject(DRIZZLE_DB) private readonly db: DbClient) {}
 
   async createBooking(params: CreateBookingParams): Promise<{
     booking: typeof bookings.$inferSelect;
     idempotent: boolean;
   }> {
+    this.logger.log('createBooking start');
     if (params.providerUserId === params.customerUserId) {
+      this.logger.warn('createBooking rejected: self-booking');
       throw new BadRequestException({
         code: 'BAD_REQUEST',
         message: 'Bad request',
@@ -55,6 +61,7 @@ export class BookingsService {
       .limit(1);
 
     if (!providerProfile) {
+      this.logger.warn('createBooking rejected: provider missing');
       throw new BadRequestException({
         code: 'BAD_REQUEST',
         message: 'Bad request',
@@ -68,6 +75,7 @@ export class BookingsService {
       .limit(1);
 
     if (!customerProfile) {
+      this.logger.warn('createBooking rejected: customer missing');
       throw new BadRequestException({
         code: 'BAD_REQUEST',
         message: 'Bad request',
@@ -81,6 +89,7 @@ export class BookingsService {
         .where(
           and(
             eq(bookings.providerUserId, params.providerUserId),
+            eq(bookings.customerUserId, params.customerUserId),
             eq(bookings.idempotencyKey, params.idempotencyKey),
           ),
         )
@@ -89,12 +98,14 @@ export class BookingsService {
       if (existing) {
         const matches = this.matchesIdempotencyPayload(existing, params);
         if (!matches) {
+          this.logger.warn('createBooking conflict: idempotency mismatch');
           throw new ConflictException({
             code: 'CONFLICT',
             message: 'Idempotency key conflict',
           });
         }
 
+        this.logger.log('createBooking idempotent hit');
         return { booking: existing, idempotent: true };
       }
     }
@@ -112,12 +123,14 @@ export class BookingsService {
       .returning();
 
     if (!created) {
+      this.logger.error('createBooking failed: no record created');
       throw new BadRequestException({
         code: 'BAD_REQUEST',
         message: 'Bad request',
       });
     }
 
+    this.logger.log(`createBooking success: ${created.id}`);
     return { booking: created, idempotent: false };
   }
 
@@ -131,11 +144,14 @@ export class BookingsService {
       .limit(1);
 
     if (!booking) {
+      this.logger.warn(`getBookingById not found: ${bookingId}`);
       throw new NotFoundException({
         code: 'NOT_FOUND',
         message: 'Booking not found',
       });
     }
+
+    this.logger.log(`getBookingById success: ${bookingId}`);
 
     return booking;
   }
@@ -182,18 +198,41 @@ export class BookingsService {
   async updateStatus(
     params: UpdateStatusParams,
   ): Promise<typeof bookings.$inferSelect> {
+    this.logger.log(`updateStatus start: ${params.bookingId}`);
     const [updated] = await this.db
       .update(bookings)
       .set({ status: params.status, updatedAt: new Date() })
-      .where(eq(bookings.id, params.bookingId))
+      .where(
+        and(
+          eq(bookings.id, params.bookingId),
+          eq(bookings.status, params.currentStatus),
+        ),
+      )
       .returning();
 
     if (!updated) {
-      throw new NotFoundException({
-        code: 'NOT_FOUND',
-        message: 'Booking not found',
+      const [existing] = await this.db
+        .select({ id: bookings.id })
+        .from(bookings)
+        .where(eq(bookings.id, params.bookingId))
+        .limit(1);
+
+      if (!existing) {
+        this.logger.warn(`updateStatus not found: ${params.bookingId}`);
+        throw new NotFoundException({
+          code: 'NOT_FOUND',
+          message: 'Booking not found',
+        });
+      }
+
+      this.logger.warn(`updateStatus conflict: ${params.bookingId}`);
+      throw new ConflictException({
+        code: 'CONFLICT',
+        message: 'Status changed, retry',
       });
     }
+
+    this.logger.log(`updateStatus success: ${params.bookingId}`);
 
     return updated;
   }
@@ -211,7 +250,7 @@ export class BookingsService {
   }
 
   private decodeCursor(cursor: string): { startTime: Date; id: string } {
-    const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
     const [startTime, id] = decoded.split('|');
     return { startTime: new Date(startTime), id };
   }
@@ -220,6 +259,6 @@ export class BookingsService {
     return Buffer.from(
       `${booking.startTime.toISOString()}|${booking.id}`,
       'utf8',
-    ).toString('base64');
+    ).toString('base64url');
   }
 }

@@ -33,6 +33,14 @@
       "value": ""
     },
     {
+      "key": "providerEmail",
+      "value": ""
+    },
+    {
+      "key": "customerEmail",
+      "value": ""
+    },
+    {
       "key": "targetUserId",
       "value": ""
     },
@@ -62,7 +70,7 @@
             "url": "{{baseUrl}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fname\": \"Provider\",\n  \"lname\": \"User\",\n  \"email\": \"provider_{{\"$timestamp\"}}@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"provider\",\n  \"businessName\": \"Studio\"\n}"
+              "raw": "{\n  \"fname\": \"Provider\",\n  \"lname\": \"User\",\n  \"email\": \"provider_{{$timestamp}}@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"provider\",\n  \"businessName\": \"Studio\"\n}"
             }
           },
           "event": [
@@ -72,6 +80,8 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  pm.collectionVariables.set('providerToken', pm.response.json().accessToken);",
+                  "  const payload = JSON.parse(pm.request.body.raw);",
+                  "  pm.collectionVariables.set('providerEmail', payload.email);",
                   "}"
                 ]
               }
@@ -91,7 +101,7 @@
             "url": "{{baseUrl}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fname\": \"Customer\",\n  \"lname\": \"User\",\n  \"email\": \"customer_{{\"$timestamp\"}}@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"customer\"\n}"
+              "raw": "{\n  \"fname\": \"Customer\",\n  \"lname\": \"User\",\n  \"email\": \"customer_{{$timestamp}}@example.com\",\n  \"password\": \"StrongPass123!\",\n  \"role\": \"customer\"\n}"
             }
           },
           "event": [
@@ -101,6 +111,8 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  pm.collectionVariables.set('customerToken', pm.response.json().accessToken);",
+                  "  const payload = JSON.parse(pm.request.body.raw);",
+                  "  pm.collectionVariables.set('customerEmail', payload.email);",
                   "}"
                 ]
               }
@@ -120,7 +132,7 @@
             "url": "{{baseUrl}}/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"customer_{{\"$timestamp\"}}@example.com\",\n  \"password\": \"StrongPass123!\"\n}"
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"StrongPass123!\"\n}"
             }
           }
         },

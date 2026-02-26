@@ -63,8 +63,9 @@ async function bootstrap() {
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
   const swaggerEnabled =
-    process.env.SWAGGER_ENABLED === 'true' ||
-    process.env.NODE_ENV !== 'production';
+    typeof process.env.SWAGGER_ENABLED === 'string'
+      ? process.env.SWAGGER_ENABLED === 'true'
+      : process.env.NODE_ENV !== 'production';
 
   if (swaggerEnabled) {
     const config = new DocumentBuilder()

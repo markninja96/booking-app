@@ -16,7 +16,7 @@ import { BookingsModule } from '../bookings/bookings.module';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
+        ttl: 60000,
         limit: 100,
       },
     ]),

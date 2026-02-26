@@ -9,11 +9,11 @@ import {
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthUser } from './auth.types';
 
+@ApiTags('Auth')
 @Controller()
 export class MeController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  @ApiTags('Auth')
   @ApiBearerAuth()
   @ApiOkResponse({
     schema: {
