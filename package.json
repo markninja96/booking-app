@@ -15,12 +15,15 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/passport": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.2.1",
+    "@nestjs/throttler": "^6.0.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
+    "swagger-ui-express": "^5.0.0",
     "zod": "^3.24.4"
   },
   "devDependencies": {

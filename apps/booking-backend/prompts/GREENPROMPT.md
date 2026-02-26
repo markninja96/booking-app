@@ -159,21 +159,207 @@ Provide local dev tokens (applies across Stage 3)
 
 Stage 4: Zod validation (STOP when done)
 
-- ZodValidationPipe/helper
-- Zod schemas for bookings endpoints
-- tests for 400 invalid payloads
+Note: Stage 4 and Stage 5 must be implemented together in one development pass to keep handlers and validation in sync. You still must run gates and stop after Stage 4, then continue to Stage 5 and run gates again.
+
+Stage 4 goals (define and wire validation used by Stage 5):
+
+- Add a ZodValidationPipe (or equivalent helper) and apply it to bookings endpoints in Stage 5.
+- Define Zod schemas for all bookings request shapes used in Stage 5 (create + list/query + params).
+- Add tests that confirm invalid booking payloads return 400 with a stable error shape/message (explicit per-rule messages).
+
+Validation error messages (Stage 4/5):
+
+- startTime/endTime must be ISO 8601 with timezone: "startTime must be a valid ISO 8601 timestamp with timezone" and "endTime must be a valid ISO 8601 timestamp with timezone"
+- endTime <= startTime: "endTime must be after startTime"
+- startTime not in future: "startTime must be in the future"
+- startTime beyond 6 months: "startTime must be within 6 months"
+- startTime less than 5 minutes: "startTime must be at least 5 minutes from now"
+- duration > 8 hours: "duration must be no more than 8 hours"
+- idempotencyKey empty/too long: "idempotencyKey must be a non-empty string" and "idempotencyKey must be at most 255 characters"
+- malformed cursor: "cursor must be a valid base64 token"
+- invalid status: "status must be one of: pending, confirmed, cancelled, completed"
+- invalid status transition: "status transition not allowed"
+- all invalid transition 400s must use: "status transition not allowed"
+- PATCH status with same current status uses: "status transition not allowed"
+- non-admin cancelled -> pending uses: "status transition not allowed"
+- invalid providerUserId/customerUserId: "providerUserId must be a valid UUID" and "customerUserId must be a valid UUID"
+
+Validation error response shape (Stage 4/5):
+
+- { code: "VALIDATION_ERROR", message: "Validation failed", errors: [{ field, message }] }
+- field uses dotted path notation (e.g., startTime, query.cursor, params.id, body.providerUserId)
 
 Stage 5: REST Bookings (UPDATED: no self-booking) (STOP when done)
+
+Stage 5 goals (build the bookings REST surface using Stage 4 validation):
+
+- Define request/response shapes for:
+  - POST /bookings (create)
+  - PATCH /bookings/:id/status (update status)
+  - GET /bookings/:id (read)
+  - GET /bookings (list with cursor pagination and optional admin filters)
+- Ensure the Zod schemas from Stage 4 cover all request bodies, params, and query inputs above.
+- Apply REST rate limiting via Nest Throttler to bookings endpoints.
+- Swagger docs enabled for bookings, auth (including Google OAuth), /me, and admin endpoints; curated Postman collection for golden-path flows (including impersonation flows).
+
+List query shape (Stage 5):
+
+- Query params: cursor?, limit?, providerUserId?, customerUserId?, status?
+- Non-admins: ignore/override filters and scope strictly to subject (by activeRole).
+- Admins (not impersonating): can filter by providerUserId, customerUserId, status.
+- Admins (impersonating): subject-scoped only; filters cannot widen scope.
+
+Pagination (Stage 5):
+
+- Order by start_time ASC, tie-breaker id ASC.
+- Cursor encodes last start_time + id.
+- limit default 20, max 100.
+
+List response shape (Stage 5):
+
+- { data: Booking[], nextCursor: string | null, hasMore: boolean }
+
+Booking response shape (Stage 5):
+
+- Fields: id, providerUserId, customerUserId, startTime, endTime, status, createdAt, updatedAt
+- Optionally include idempotencyKey only in create responses (omit in list/get)
+- Status values: pending | confirmed | cancelled | completed
+
+Response envelopes (Stage 5):
+
+- Create/Get: { data: Booking }
+- List: { data: Booking[], nextCursor: string | null, hasMore: boolean }
+
+Status behavior (Stage 5):
+
+- New bookings default to status: pending
+- Transitions in Stage 5:
+  - pending -> cancelled
+  - pending -> confirmed
+  - confirmed -> completed
+- Admin (impersonating) override: cancelled -> pending only
+- Status update allowed for booking owner (customer or provider)
+- Admins can update status only when impersonating the booking owner (subject-scoped)
+- Cancellation allowed for booking owner (customer or provider) at any time
+- Cancellation allowed for confirmed bookings by owner as well
+- Cancellation not allowed for completed bookings
+- Cancelled and completed are terminal for everyone else
+
+Idempotency behavior (Stage 5):
+
+- Compare normalized payload (providerUserId, startTime, endTime) for idempotency conflicts
+- Normalize times to canonical ISO strings before comparison
+- If same idempotency key and normalized payload matches: return existing booking (200)
+- If same idempotency key and payload differs: 409 conflict
+- idempotencyKey is nullable; uniqueness applies only when provided
+
+Create booking request shape (Stage 5):
+
+- Required: providerUserId, startTime, endTime
+- Optional: idempotencyKey
+- Rules:
+  - startTime/endTime are ISO 8601 strings
+  - startTime/endTime must include timezone (offset or Z)
+  - endTime must be after startTime
+  - startTime must be in the future
+  - startTime must be no more than 6 months in the future
+  - startTime must be at least 5 minutes from now
+  - duration must be no more than 8 hours
+  - idempotencyKey is a non-empty string, max length 255
+
+Update status request shape (Stage 5):
+
+- PATCH /bookings/:id/status body: { status: "pending" | "cancelled" | "confirmed" | "completed" }
+- pending is only valid for admin impersonation override (cancelled -> pending)
+- Response: { data: Booking }
+
+List query validation (Stage 5):
+
+- limit integer 1-100 (default 20)
+- cursor must be a valid encoded token (base64 of startTime|id)
+- malformed cursor returns 400 with a stable error message
+- providerUserId/customerUserId must be UUIDs if present
+- status must be one of pending | confirmed | cancelled | completed
+
+Status codes (Stage 5):
+
+- Create booking: 201 on first create; 200 on idempotent retry with same payload; 409 on same idempotency key with different payload.
+- Update status: 200 on success.
+- Self-booking rejected: 400.
+- ActiveRole != customer on create: 403.
+- Provider cannot create bookings: 403.
+- GET /bookings/:id not owned by subject: 403.
+- GET /bookings list returns 403 if a non-admin requests an admin-wide list (any request that omits required subject scoping).
+- Invalid status transition: 400.
+- PATCH status with same current status: 400.
+- Unauthorized status update (not owner, or admin without impersonation): 403.
+
+Auth/forbidden error codes (Stage 5):
+
+- 401 responses use code: "UNAUTHENTICATED"
+- 403 responses use code: "FORBIDDEN"
+
+Auth/forbidden error shape (Stage 5):
+
+- 401: { code: "UNAUTHENTICATED", message: "Authentication required" }
+- 403: { code: "FORBIDDEN", message: "Forbidden" }
+
+Not found/conflict error shape (Stage 5):
+
+- 404: { code: "NOT_FOUND", message: "Booking not found" }
+- 409: { code: "CONFLICT", message: "Idempotency key conflict" }
+
+Bad request error shape (Stage 5):
+
+- 400 (non-validation business rules, e.g., self-booking): { code: "BAD_REQUEST", message: "Bad request" }
 
 - POST /bookings (idempotency + auth rules)
 - customer creates booking as themselves (customer_user_id derived from JWT subject)
 - provider_user_id must exist in provider_profiles
 - disallow self-booking: reject if provider_user_id === customer_user_id (400)
+- bookings endpoints require auth
+- customers can only read bookings where they are the customer
+- providers can only read bookings where they are the provider
+- admins can read any booking but cannot create bookings
+- PATCH /bookings/:id/status (status transitions)
+- admin authorization uses actorUserId when impersonating; booking ownership checks use subjectUserId
+- for non-admins, authorization and ownership checks use subjectUserId
+- create booking requires activeRole=customer (deny otherwise)
+- when impersonating, bookings list is subject-scoped (no admin-wide list)
+- when impersonating, GET /bookings/:id is subject-scoped (deny if booking not owned by subject)
 - GET /bookings/:id
 - GET /bookings list (cursor pagination)
 - REST rate limiting via Nest Throttler
 - e2e test create->read
-- Add test: self-booking rejected (400)
+- Add tests:
+  - self-booking rejected (400)
+  - create booking rejects when activeRole != customer
+  - provider cannot create bookings
+  - GET /bookings/:id denied when booking not owned by subject (403)
+  - GET /bookings list returns only subject-owned bookings
+  - admin (non-impersonating) can read any booking by id and list all
+  - admin (impersonating) is subject-scoped for GET /bookings/:id and GET /bookings
+  - booking owner can cancel; non-owner cannot cancel
+  - cancelling a non-pending booking returns 400
+  - only provider (or admin impersonating provider) can confirm/complete
+  - customer attempting confirm/complete returns 403
+  - provider attempting confirmed -> completed from pending returns 400
+  - provider attempting confirmed -> completed from pending uses "status transition not allowed"
+  - provider attempting confirm on cancelled booking returns 400
+  - provider attempting confirm on cancelled booking uses "status transition not allowed"
+  - provider can confirm pending booking
+  - provider can complete confirmed booking
+  - PATCH status response returns updated status in payload
+  - admin (impersonating) can move cancelled -> pending
+  - admin (non-impersonating) cannot override terminal states (403)
+  - non-admin cannot move cancelled -> pending (400)
+  - non-admin cancelled -> pending uses "status transition not allowed"
+  - PATCH status to same current status returns 400 and uses "status transition not allowed"
+  - owner can cancel confirmed booking
+  - cancelling a completed booking returns 400
+  - cancelling a completed booking uses "status transition not allowed"
+  - idempotency key behavior is enforced
+  - cursor pagination yields stable ordering and next cursor
 
 Stage 6: BullMQ reminders (STOP when done)
 
